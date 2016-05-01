@@ -50,6 +50,15 @@ import java.util.Map;
 public abstract class BluetoothLeScannerCompat {
 	private static BluetoothLeScannerCompat mInstance;
 	private final Handler mHandler;
+	long mPowerSaveRestInterval;
+	long mPowerSaveScanInterval;
+	Handler mPowerSaveHandler;
+
+
+	abstract long[] getPowerSaveData();
+
+	abstract Runnable getPowerSaveSleepRunnable();
+	abstract Runnable getPowerSaveScanRunnable();
 
 	/**
 	 * Returns the scanner compat object
@@ -121,6 +130,30 @@ public abstract class BluetoothLeScannerCompat {
 	 */
 	@RequiresPermission(allOf = {Manifest.permission.BLUETOOTH_ADMIN, Manifest.permission.BLUETOOTH})
 	/* package */ abstract void startScanInternal(final List<ScanFilter> filters, final ScanSettings settings, final ScanCallback callback);
+
+	protected void setPowerSaveSettings() {
+		final long[] powerSaveSettings = getPowerSaveData();
+		final long minRest = powerSaveSettings[0];
+		final long minScan = powerSaveSettings[1];
+
+		if (minRest < Long.MAX_VALUE && minScan < Long.MAX_VALUE) {
+			mPowerSaveRestInterval = minRest;
+			mPowerSaveScanInterval = minScan;
+			if (mPowerSaveHandler == null) {
+				mPowerSaveHandler = new Handler();
+			} else {
+				mPowerSaveHandler.removeCallbacks(mPowerSaveScanRunnable);
+				mPowerSaveHandler.removeCallbacks(mPowerSaveSleepRunnable);
+			}
+			mPowerSaveHandler.postDelayed(mPowerSaveSleepRunnable, mPowerSaveScanInterval);
+		} else {
+			mPowerSaveRestInterval = mPowerSaveScanInterval = 0;
+			if (mPowerSaveHandler != null) {
+				mPowerSaveHandler.removeCallbacks(mPowerSaveScanRunnable);
+				mPowerSaveHandler.removeCallbacks(mPowerSaveSleepRunnable);
+			}
+		}
+	}
 
 	/**
 	 * Stops an ongoing Bluetooth LE scan.

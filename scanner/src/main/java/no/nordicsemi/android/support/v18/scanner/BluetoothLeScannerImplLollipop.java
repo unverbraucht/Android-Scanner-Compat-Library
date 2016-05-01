@@ -51,6 +51,45 @@ import java.util.Map;
 		mCallbacks = new HashMap<>();
 	}
 
+	private Runnable mPowerSaveSleepRunnable = new Runnable() {
+		@SuppressWarnings("deprecation")
+		@Override
+		@RequiresPermission(allOf = {Manifest.permission.BLUETOOTH_ADMIN, Manifest.permission.BLUETOOTH})
+		public void run() {
+			if (mBluetoothAdapter != null && mPowerSaveRestInterval > 0 && mPowerSaveScanInterval > 0) {
+				mBluetoothAdapter.stopLeScan(BluetoothLeScannerImplLollipop.this);
+
+				if (mPowerSaveHandler != null) {
+					mPowerSaveHandler.postDelayed(mPowerSaveScanRunnable, mPowerSaveRestInterval);
+				}
+			}
+		}
+	};
+	private Runnable mPowerSaveScanRunnable = new Runnable() {
+		@SuppressWarnings("deprecation")
+		@Override
+		@RequiresPermission(allOf = {Manifest.permission.BLUETOOTH_ADMIN, Manifest.permission.BLUETOOTH})
+		public void run() {
+			if (mBluetoothAdapter != null && mPowerSaveRestInterval > 0 && mPowerSaveScanInterval > 0) {
+				mBluetoothAdapter.startLeScan(BluetoothLeScannerImplLollipop.this);
+
+				if (mPowerSaveHandler != null) {
+					mPowerSaveHandler.postDelayed(mPowerSaveSleepRunnable, mPowerSaveScanInterval);
+				}
+			}
+		}
+	};
+
+	@Override
+	Runnable getPowerSaveSleepRunnable() {
+		return mPowerSaveSleepRunnable;
+	}
+
+	@Override
+	public Runnable getPowerSaveScanRunnable() {
+		return mPowerSaveScanRunnable;
+	}
+
 	@Override
 	@RequiresPermission(allOf = {Manifest.permission.BLUETOOTH_ADMIN, Manifest.permission.BLUETOOTH})
 	/* package */ void startScanInternal(final List<ScanFilter> filters, final ScanSettings settings, final ScanCallback callback) {

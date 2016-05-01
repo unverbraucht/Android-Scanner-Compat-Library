@@ -38,9 +38,7 @@ import java.util.Map;
 /* package */ class BluetoothLeScannerImplJB extends BluetoothLeScannerCompat implements BluetoothAdapter.LeScanCallback {
 	private final BluetoothAdapter mBluetoothAdapter;
 	private final Map<ScanCallback, ScanCallbackWrapper> mWrappers;
-	private long mPowerSaveRestInterval;
-	private long mPowerSaveScanInterval;
-	private Handler mPowerSaveHandler;
+
 	private Runnable mPowerSaveSleepRunnable = new Runnable() {
 		@SuppressWarnings("deprecation")
 		@Override
@@ -55,7 +53,6 @@ import java.util.Map;
 			}
 		}
 	};
-
 	private Runnable mPowerSaveScanRunnable = new Runnable() {
 		@SuppressWarnings("deprecation")
 		@Override
@@ -70,6 +67,35 @@ import java.util.Map;
 			}
 		}
 	};
+
+	@Override
+	Runnable getPowerSaveSleepRunnable() {
+		return mPowerSaveSleepRunnable;
+	}
+
+	@Override
+	public Runnable getPowerSaveScanRunnable() {
+		return mPowerSaveScanRunnable;
+	}
+
+	@Override
+	long[] getPowerSaveData() {
+		long minRest = Long.MAX_VALUE, minScan = Long.MAX_VALUE;
+		synchronized (mWrappers) {
+			for (ScanCallbackWrapper wrapper : mWrappers.values()) {
+				final ScanSettings settings = wrapper.getScanSettings();
+				if (settings.hasPowerSaveMode()) {
+					if (minRest > settings.getPowerSaveRest()) {
+						minRest = settings.getPowerSaveRest();
+					}
+					if (minScan > settings.getPowerSaveScan()) {
+						minScan = settings.getPowerSaveScan();
+					}
+				}
+			}
+		}
+		return new long[] { minRest, minScan};
+	}
 
 	public BluetoothLeScannerImplJB() {
 		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -98,40 +124,6 @@ import java.util.Map;
 
 		if (shouldStart) {
 			mBluetoothAdapter.startLeScan(this);
-		}
-	}
-
-	private void setPowerSaveSettings() {
-		long minRest = Long.MAX_VALUE, minScan = Long.MAX_VALUE;
-		synchronized (mWrappers) {
-			for (ScanCallbackWrapper wrapper : mWrappers.values()) {
-				final ScanSettings settings = wrapper.getScanSettings();
-				if (settings.hasPowerSaveMode()) {
-					if (minRest > settings.getPowerSaveRest()) {
-						minRest = settings.getPowerSaveRest();
-					}
-					if (minScan > settings.getPowerSaveScan()) {
-						minScan = settings.getPowerSaveScan();
-					}
-				}
-			}
-		}
-		if (minRest < Long.MAX_VALUE && minScan < Long.MAX_VALUE) {
-			mPowerSaveRestInterval = minRest;
-			mPowerSaveScanInterval = minScan;
-			if (mPowerSaveHandler == null) {
-				mPowerSaveHandler = new Handler();
-			} else {
-				mPowerSaveHandler.removeCallbacks(mPowerSaveScanRunnable);
-				mPowerSaveHandler.removeCallbacks(mPowerSaveSleepRunnable);
-			}
-			mPowerSaveHandler.postDelayed(mPowerSaveSleepRunnable, mPowerSaveScanInterval);
-		} else {
-			mPowerSaveRestInterval = mPowerSaveScanInterval = 0;
-			if (mPowerSaveHandler != null) {
-				mPowerSaveHandler.removeCallbacks(mPowerSaveScanRunnable);
-				mPowerSaveHandler.removeCallbacks(mPowerSaveSleepRunnable);
-			}
 		}
 	}
 
