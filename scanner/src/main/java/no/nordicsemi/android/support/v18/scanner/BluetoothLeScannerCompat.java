@@ -65,6 +65,20 @@ public abstract class BluetoothLeScannerCompat {
 		return mInstance = new BluetoothLeScannerImplJB();
 	}
 
+	/**
+	 * Returns the scanner compat object
+	 * @return scanner implementation
+	 */
+	public static BluetoothLeScannerCompat getScannerForVersion(final int sdkVersion) {
+		if (mInstance != null)
+			return mInstance;
+		if (sdkVersion >= Build.VERSION_CODES.M)
+			return mInstance = new BluetoothLeScannerImplMarshmallow();
+		if (sdkVersion >= Build.VERSION_CODES.LOLLIPOP)
+			return mInstance = new BluetoothLeScannerImplLollipop();
+		return mInstance = new BluetoothLeScannerImplJB();
+	}
+
 	/* package */ BluetoothLeScannerCompat() {
 		mHandler = new Handler(Looper.getMainLooper());
 	}
